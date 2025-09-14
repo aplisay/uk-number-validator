@@ -6,6 +6,7 @@ import fetch from "node-fetch";
 import { parse } from "csv-parse/sync";
 import * as fs from "node:fs";
 import * as path from "node:path";
+import logger from "./logger";
 
 type CsvRow = Record<string, string>;
 
@@ -21,8 +22,6 @@ const FILES = [
   "s7.csv", // 07 (070/071-079/076 etc.)
   "s8.csv", // 08
   "s9.csv", // 09
-  "s10%20(type%20a%20and%20c).csv", // URL encoded version
-  "s10%20(type%20b).csv", // URL encoded version
 ];
 
 const BASE =
@@ -115,7 +114,7 @@ async function pullOne(name: string, noFetch: boolean = false): Promise<CsvRow[]
   const cachedFile = getCachedFilePath(name);
   
   if (noFetch && fs.existsSync(cachedFile)) {
-    console.log(`Using cached ${name}...`);
+    logger.info({ fileName: name }, `Using cached ${name}...`);
     const buf = fs.readFileSync(cachedFile);
     const rows: CsvRow[] = parse(buf, {
       columns: true,
@@ -123,11 +122,11 @@ async function pullOne(name: string, noFetch: boolean = false): Promise<CsvRow[]
       relax_column_count: true,
       trim: true,
     });
-    console.log(`Loaded ${name} with ${rows.length} rows from cache`);
+    logger.info({ fileName: name, rowCount: rows.length }, `Loaded ${name} with ${rows.length} rows from cache`);
     return rows;
   }
   
-  console.log(`Downloading ${name}...`);
+  logger.info({ fileName: name }, `Downloading ${name}...`);
   const res = await fetch(tidyUrl(name), { redirect: 'follow' });
   if (!res.ok) throw new Error(`Fetch failed ${res.status} for ${name}`);
   const buf = await res.arrayBuffer();
@@ -135,7 +134,7 @@ async function pullOne(name: string, noFetch: boolean = false): Promise<CsvRow[]
   // Cache the downloaded file
   ensureDataDir();
   fs.writeFileSync(cachedFile, Buffer.from(buf));
-  console.log(`Cached ${name} to ${cachedFile}`);
+  logger.info({ fileName: name, cacheFile: cachedFile }, `Cached ${name} to ${cachedFile}`);
   
   // CSV is UTF-8; we let csv-parse auto-detect headers
   const rows: CsvRow[] = parse(Buffer.from(buf), {
@@ -144,7 +143,7 @@ async function pullOne(name: string, noFetch: boolean = false): Promise<CsvRow[]
     relax_column_count: true,
     trim: true,
   });
-  console.log(`Downloaded ${name} with ${rows.length} rows`);
+  logger.info({ fileName: name, rowCount: rows.length }, `Downloaded ${name} with ${rows.length} rows`);
   return rows;
 }
 
@@ -154,7 +153,7 @@ async function pullOne(name: string, noFetch: boolean = false): Promise<CsvRow[]
   const noFetch = args.includes('--no-fetch') || args.includes('-n');
   
   if (noFetch) {
-    console.log("Running in no-fetch mode - using cached files only");
+    logger.info("Running in no-fetch mode - using cached files only");
   }
 
   const rules: { prefix: string; totalLength: number; status: string; provider?: string }[] = [];
@@ -169,7 +168,7 @@ async function pullOne(name: string, noFetch: boolean = false): Promise<CsvRow[]
           row["Number range"] ??
           row["Number range (non-geographic) or Area code"] ??
           row["Number range (Non-geographic) or Area Code"] ??
-          row["Code"] ?? // S10
+          row["Code"] ??
           row["Dialling code"] ?? // fallback for S1 area code splits
           "";
 
@@ -190,7 +189,7 @@ async function pullOne(name: string, noFetch: boolean = false): Promise<CsvRow[]
         if (rule) rules.push(rule);
       }
     } catch (error) {
-      console.warn(`Skipping ${f}: ${error}`);
+      logger.warn({ fileName: f, error }, `Skipping ${f}: ${error}`);
       continue;
     }
   }
@@ -203,9 +202,9 @@ async function pullOne(name: string, noFetch: boolean = false): Promise<CsvRow[]
   const out = Array.from(uniq.values());
 
   fs.writeFileSync("prefixes.json", JSON.stringify(out, null, 2));
-  console.log(`Wrote prefixes.json with ${out.length} rules`);
+  logger.info({ ruleCount: out.length }, `Wrote prefixes.json with ${out.length} rules`);
 })().catch((e) => {
-  console.error(e);
+  logger.error({ error: e }, 'Download process failed');
   process.exit(1);
 });
 

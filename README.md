@@ -1,7 +1,9 @@
 
+
+
 # UK Number Validator (Ofcom-driven)
 
-Authoritative UK number validation against Ofcom weekly numbering CSVs (S1, S3, S5, S7, S8, S9, S10).  
+Authoritative UK number validation against Ofcom weekly numbering CSVs (S1, S3, S5, S7, S8, S9).  
 Outputs `NUMBER_VALID`, `NUMBER_INVALID`, or `NUMBER_TOO_SHORT` with optional provider information.
 
 ## Quick start
@@ -12,6 +14,8 @@ yarn install
 yarn build:all           # cleans, downloads Ofcom CSVs, compiles TS, generates prefixes.json
 yarn build:all:cache     # same as above but uses cached CSV files (faster for testing)
 yarn test                # runs simple checks
+yarn test:quick          # runs quick performance test (100 numbers)
+yarn test:performance    # runs comprehensive performance test (10,000 numbers)
 yarn bundle              # creates build/uk-number-validator.tar.gz
 ```
 
@@ -19,12 +23,41 @@ yarn bundle              # creates build/uk-number-validator.tar.gz
 ```bash
 yarn install
 yarn build:all:cache     # build with cached data (faster)
-yarn dev                 # start the HTTP service
+yarn dev                 # start the HTTP service with pretty logging
+yarn start               # start the HTTP service with JSON logging (production)
 ```
 
 ### With Docker
 ```bash
 docker-compose up        # builds and runs the service
+```
+
+## Logging
+
+The service uses [Pino](https://getpino.io/) for high-performance structured logging:
+
+- **Development mode**: Pretty-printed logs with colors and timestamps
+- **Production mode**: Structured JSON logs for log aggregation systems
+
+### Environment Variables
+
+- `NODE_ENV`: Set to `development` for pretty logging, `production` for JSON logging
+- `LOG_LEVEL`: Set log level (`trace`, `debug`, `info`, `warn`, `error`, `fatal`). Default: `info`
+
+### Examples
+
+```bash
+# Development with pretty logging
+NODE_ENV=development yarn dev
+
+# Production with JSON logging
+NODE_ENV=production yarn start
+
+# Debug level logging
+LOG_LEVEL=debug yarn dev
+
+# Docker with development logging
+NODE_ENV=development docker-compose up
 ```
 
 ## Programmatic use
@@ -65,7 +98,7 @@ The validator can be run as an HTTP service with the following endpoints:
 
 ```bash
 # Validate a single number
-curl "http://localhost:3000/validate?number=02079460000"
+curl "http://localhost:8080/validate?number=02079460000"
 
 # Response:
 {
@@ -79,12 +112,12 @@ curl "http://localhost:3000/validate?number=02079460000"
 }
 
 # Batch validation
-curl -X POST http://localhost:3000/validate/batch \
+curl -X POST http://localhost:8080/validate/batch \
   -H "Content-Type: application/json" \
   -d '{"numbers": ["02079460000", "07418534", "08001234567"]}'
 
 # Health check
-curl http://localhost:3000/health
+curl http://localhost:8080/health
 ```
 
 ### Docker Deployment
@@ -95,7 +128,7 @@ docker-compose up
 
 # Or build manually
 docker build -t uk-number-validator .
-docker run -p 3000:3000 uk-number-validator
+docker run -p 8080:8080 uk-number-validator
 ```
 
 ## Scripts
@@ -103,6 +136,8 @@ docker run -p 3000:3000 uk-number-validator
 - `src/download.ts` – downloads Ofcom CSVs and emits `prefixes.json` (`{ prefix, totalLength, status, provider }[]`).
 - `src/classifyUkNumber.ts` – builds an index and classifies numbers with provider information.
 - `src/test/run-tests.ts` – minimal smoke tests; extend with your own cases.
+- `src/test/quick-performance-test.ts` – quick performance test with 100 numbers (90% valid, 10% invalid).
+- `src/test/performance-test.ts` – comprehensive performance test with 10,000 numbers (90% valid, 10% invalid).
 
 ## Caching
 
@@ -112,7 +147,31 @@ CSV files are automatically cached in the `data/` directory to speed up developm
 
 ## Notes
 
-- Both *Allocated* and *Free for allocation* ranges are treated as **structurally diallable**.  
-  Statuses like *Unavailable*, *Closed*, or *Withdrawn* are treated as invalid.
-- Short codes (S10) such as `116xxx`, `118xxx`, `100`, etc., are supported.
+- *Allocated* and *Allocated(Closed Range)* ranges are treated as **structurally diallable**.  
+  Statuses like *Free for allocation*, *Unavailable*, or *Withdrawn* are treated as invalid.
+- Only standard full-length UK numbers are supported (no short codes).
 - Re-run `yarn build:all` weekly to pick up Ofcom updates.
+- **Note**: Existing `prefixes.json` files may contain S10 shortcodes from previous builds. Run `yarn build:all` to rebuild with only standard numbers (S1-S9).
+
+## Performance Testing
+
+The validator includes comprehensive performance tests that serve dual purposes:
+
+### Quick Test (`yarn test:quick`)
+- Tests 100 numbers (90% valid, 10% invalid)
+- Runs in ~5 seconds
+- Good for development and quick validation
+
+### Comprehensive Test (`yarn test:performance`)
+- Tests 10,000 numbers (90% valid, 10% invalid)
+- Includes various number formats and edge cases
+- Performance benchmark: ~142,857 tests per second
+- Generates detailed test data in `test-data.json`
+- Typical accuracy: 96%+ (some edge cases expected)
+
+### Test Categories
+- **Valid numbers**: Allocated, Protected, Allocated(Closed Range), Quarantined, Designated, Reserved
+- **Invalid numbers**: Free status, unavailable, withdrawn, malformed
+- **Edge cases**: Too short, international formats, various number formats
+
+The tests validate both correctness and performance, ensuring the validator can handle high-volume validation scenarios efficiently.

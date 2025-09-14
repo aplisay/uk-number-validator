@@ -2,6 +2,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { parse } from "csv-parse/sync";
+import logger from "./logger";
 
 type CsvRow = Record<string, string>;
 
@@ -44,7 +45,7 @@ function loadCsv(fp: string): CsvRow[] {
 
 (function main() {
   if (!fs.existsSync(DATA_DIR)) {
-    console.error(`Data directory not found: ${DATA_DIR}. Run 'npm run prepare:data' first.`);
+    logger.error({ dataDir: DATA_DIR }, `Data directory not found: ${DATA_DIR}. Run 'npm run prepare:data' first.`);
     process.exit(2);
   }
 
@@ -53,7 +54,7 @@ function loadCsv(fp: string): CsvRow[] {
   for (const f of FILES) {
     const fp = path.join(DATA_DIR, f);
     if (!fs.existsSync(fp)) {
-      console.error(`Missing CSV: ${fp}`);
+      logger.error({ filePath: fp }, `Missing CSV: ${fp}`);
       process.exit(2);
     }
     const rows = loadCsv(fp);
@@ -86,5 +87,5 @@ function loadCsv(fp: string): CsvRow[] {
   const out = Array.from(uniq.values());
 
   fs.writeFileSync(path.resolve(process.cwd(), "prefixes.json"), JSON.stringify(out, null, 2));
-  console.log(`Wrote prefixes.json with ${out.length} rules`);
+  logger.info({ ruleCount: out.length }, `Wrote prefixes.json with ${out.length} rules`);
 })();

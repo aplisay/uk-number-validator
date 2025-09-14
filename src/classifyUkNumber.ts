@@ -74,7 +74,7 @@ export function classifyUkNumber(national: string, idx: PrefixIndex): Classifica
   const len = national.length;
 
   if (matchedRules.length) {
-    const live = matchedRules.filter(r => !/unavailable|closed|withdrawn/i.test(r.status));
+    const live = matchedRules.filter(r => !/unavailable|withdrawn|^free$/i.test(r.status));
 
     // Check for exact matches first (where prefix equals the full number)
     const exactMatch = live.find(r => r.prefix === national);
@@ -122,7 +122,7 @@ function existsRuleThatStartsWithDigits(digits: string, idx: PrefixIndex): boole
 function hasDescendantRule(node?: PrefixIndex): boolean {
   if (!node) return false;
   if (node.rules?.length) return true;
-  for (const child of node.children?.values() ?? []) {
+  for (const child of Array.from(node.children?.values() ?? [])) {
     if (hasDescendantRule(child)) return true;
   }
   return false;

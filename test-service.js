@@ -3,6 +3,20 @@
 
 
 const http = require('http');
+const pino = require('pino');
+
+// Create logger for test service
+const logger = pino({
+  level: 'info',
+  transport: {
+    target: 'pino-pretty',
+    options: {
+      colorize: true,
+      translateTime: 'SYS:standard',
+      ignore: 'pid,hostname'
+    }
+  }
+});
 
 const BASE_URL = `http://localhost:${process.env.PORT || 8080}`;
 
@@ -26,25 +40,25 @@ function makeRequest(path) {
 }
 
 async function testService() {
-  console.log('Testing UK Number Validator Service...\n');
+  logger.info('Testing UK Number Validator Service...\n');
   
   try {
     // Test health endpoint
-    console.log('1. Testing health endpoint...');
+    logger.info('1. Testing health endpoint...');
     const health = await makeRequest('/health');
-    console.log('   Health:', health.status, health.ready ? 'Ready' : 'Not Ready');
-    console.log('   Rules loaded:', health.rulesLoaded);
-    console.log();
+    logger.info('   Health:', health.status, health.ready ? 'Ready' : 'Not Ready');
+    logger.info('   Rules loaded:', health.rulesLoaded);
+    logger.info();
     
     // Test info endpoint
-    console.log('2. Testing info endpoint...');
+    logger.info('2. Testing info endpoint...');
     const info = await makeRequest('/info');
-    console.log('   Service:', info.service, info.version);
-    console.log('   Ready:', info.ready);
-    console.log();
+    logger.info('   Service:', info.service, info.version);
+    logger.info('   Ready:', info.ready);
+    logger.info();
     
     // Test single number validation
-    console.log('3. Testing single number validation...');
+    logger.info('3. Testing single number validation...');
     const testNumbers = [
       '020 8099 6910',
       '020 7946 0000',
@@ -57,12 +71,12 @@ async function testService() {
     
     for (const number of testNumbers) {
       const result = await makeRequest(`/validate?number=${encodeURIComponent(number)}`);
-      console.log(`   ${number}: ${result.result.class}${result.result.provider ? ` (${result.result.provider})` : ''}`);
+      logger.info(`   ${number}: ${result.result.class}${result.result.provider ? ` (${result.result.provider})` : ''}`);
     }
-    console.log();
+    logger.info();
     
     // Test batch validation
-    console.log('4. Testing batch validation...');
+    logger.info('4. Testing batch validation...');
     const batchRequest = JSON.stringify({
       numbers: ['020 8099 6910', '07418534', '0800 123 4567']
     });
@@ -97,36 +111,36 @@ async function testService() {
       req.end();
     });
     
-    console.log('   Batch results:');
+    logger.info('   Batch results:');
     batchResult.results.forEach(r => {
-      console.log(`     ${r.number}: ${r.result.class}${r.result.provider ? ` (${r.result.provider})` : ''}`);
+      logger.info(`     ${r.number}: ${r.result.class}${r.result.provider ? ` (${r.result.provider})` : ''}`);
     });
-    console.log();
+    logger.info();
     
     // Test error handling
-    console.log('5. Testing error handling...');
+    logger.info('5. Testing error handling...');
     try {
       await makeRequest('/validate');
-      console.log('   Missing number parameter: handled correctly');
+      logger.info('   Missing number parameter: handled correctly');
     } catch (e) {
-      console.log('   Missing number parameter: error handled');
+      logger.info('   Missing number parameter: error handled');
     }
     
     try {
       await makeRequest('/nonexistent');
-      console.log('   404 endpoint: handled correctly');
+      logger.info('   404 endpoint: handled correctly');
     } catch (e) {
-      console.log('   404 endpoint: error handled');
+      logger.info('   404 endpoint: error handled');
     }
     
-    console.log('\n✅ All tests completed successfully!');
+    logger.info('\n✅ All tests completed successfully!');
     
   } catch (error) {
-    console.error('❌ Test failed:', error.message);
-    console.log('\nMake sure the service is running:');
-    console.log('  yarn dev');
-    console.log('  or');
-    console.log('  docker-compose up');
+    logger.error('❌ Test failed:', error.message);
+    logger.info('\nMake sure the service is running:');
+    logger.info('  yarn dev');
+    logger.info('  or');
+    logger.info('  docker-compose up');
   }
 }
 

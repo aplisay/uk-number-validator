@@ -12,16 +12,16 @@ RUN apk add --no-cache \
 # Copy package files
 COPY package.json yarn.lock ./
 
-# Install dependencies
-RUN yarn install --frozen-lockfile --production
+# Install dependencies (including dev dependencies for build)
+RUN yarn install --frozen-lockfile
 
 # Copy source code
 COPY src/ ./src/
 COPY tsconfig.json ./
 
 # Copy any existing data files (optional, for faster startup)
-COPY data/ ./data/ 2>/dev/null || true
-COPY prefixes.json ./ 2>/dev/null || true
+COPY data/ ./data/
+COPY prefixes.json ./
 
 # Build the application
 RUN yarn build
@@ -42,4 +42,5 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:${PORT:-8080}/health || exit 1
 
 # Start the server
-CMD ["yarn", "start"]
+# Use pino-pretty for development, regular start for production
+CMD ["sh", "-c", "if [ \"$NODE_ENV\" = \"development\" ]; then yarn start:dev; else yarn start; fi"]

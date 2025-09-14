@@ -2,9 +2,23 @@
 
 const http = require('http');
 const { performance } = require('perf_hooks');
+const pino = require('pino');
 
-const URL = 'http://localhost:3000/validate?number=02079460000';
-const ITERATIONS = 1000;
+// Create logger for performance test
+const logger = pino({
+  level: 'info',
+  transport: {
+    target: 'pino-pretty',
+    options: {
+      colorize: true,
+      translateTime: 'SYS:standard',
+      ignore: 'pid,hostname'
+    }
+  }
+});
+
+const URL = `http://localhost:${process.env.PORT || 8080}/validate?number=07970939456`;
+const ITERATIONS = 10000;
 
 async function makeRequest() {
   return new Promise((resolve, reject) => {
@@ -56,10 +70,10 @@ async function makeRequest() {
 }
 
 async function runPerformanceTest() {
-  console.log(`Starting performance test...`);
-  console.log(`URL: ${URL}`);
-  console.log(`Iterations: ${ITERATIONS}`);
-  console.log(`\nRunning tests...\n`);
+  logger.info(`Starting performance test...`);
+  logger.info(`URL: ${URL}`);
+  logger.info(`Iterations: ${ITERATIONS}`);
+  logger.info(`\nRunning tests...\n`);
   
   const results = [];
   const startTime = performance.now();
@@ -71,11 +85,11 @@ async function runPerformanceTest() {
       
       // Progress indicator
       if ((i + 1) % 100 === 0) {
-        console.log(`Completed ${i + 1}/${ITERATIONS} requests...`);
+        logger.info(`Completed ${i + 1}/${ITERATIONS} requests...`);
       }
     } catch (error) {
       results.push(error);
-      console.error(`Request ${i + 1} failed:`, error.error || error.message);
+      logger.error(`Request ${i + 1} failed:`, error.error || error.message);
     }
   }
   
@@ -109,26 +123,26 @@ async function runPerformanceTest() {
   };
   
   // Print results
-  console.log('\n' + '='.repeat(60));
-  console.log('PERFORMANCE TEST RESULTS');
-  console.log('='.repeat(60));
-  console.log(`Total Requests: ${stats.totalRequests}`);
-  console.log(`Successful Requests: ${stats.successfulRequests}`);
-  console.log(`Failed Requests: ${stats.failedRequests}`);
-  console.log(`Success Rate: ${stats.successRate.toFixed(2)}%`);
-  console.log(`Total Duration: ${stats.totalDuration.toFixed(2)}ms`);
-  console.log(`Average Request Time: ${stats.averageRequestTime.toFixed(2)}ms`);
-  console.log(`Min Request Time: ${stats.minRequestTime.toFixed(2)}ms`);
-  console.log(`Max Request Time: ${stats.maxRequestTime.toFixed(2)}ms`);
-  console.log(`Requests Per Second: ${stats.requestsPerSecond.toFixed(2)}`);
-  console.log('\nResponse Time Percentiles:');
-  console.log(`  50th percentile (median): ${getPercentile(durations, 50).toFixed(2)}ms`);
-  console.log(`  90th percentile: ${getPercentile(durations, 90).toFixed(2)}ms`);
-  console.log(`  95th percentile: ${getPercentile(durations, 95).toFixed(2)}ms`);
-  console.log(`  99th percentile: ${getPercentile(durations, 99).toFixed(2)}ms`);
+  logger.info('\n' + '='.repeat(60));
+  logger.info('PERFORMANCE TEST RESULTS');
+  logger.info('='.repeat(60));
+  logger.info(`Total Requests: ${stats.totalRequests}`);
+  logger.info(`Successful Requests: ${stats.successfulRequests}`);
+  logger.info(`Failed Requests: ${stats.failedRequests}`);
+  logger.info(`Success Rate: ${stats.successRate.toFixed(2)}%`);
+  logger.info(`Total Duration: ${stats.totalDuration.toFixed(2)}ms`);
+  logger.info(`Average Request Time: ${stats.averageRequestTime.toFixed(2)}ms`);
+  logger.info(`Min Request Time: ${stats.minRequestTime.toFixed(2)}ms`);
+  logger.info(`Max Request Time: ${stats.maxRequestTime.toFixed(2)}ms`);
+  logger.info(`Requests Per Second: ${stats.requestsPerSecond.toFixed(2)}`);
+  logger.info('\nResponse Time Percentiles:');
+  logger.info(`  50th percentile (median): ${getPercentile(durations, 50).toFixed(2)}ms`);
+  logger.info(`  90th percentile: ${getPercentile(durations, 90).toFixed(2)}ms`);
+  logger.info(`  95th percentile: ${getPercentile(durations, 95).toFixed(2)}ms`);
+  logger.info(`  99th percentile: ${getPercentile(durations, 99).toFixed(2)}ms`);
   
   if (failedRequests.length > 0) {
-    console.log('\nFailed Requests:');
+    logger.info('\nFailed Requests:');
     const errorCounts = {};
     failedRequests.forEach(req => {
       const error = req.error || 'Unknown error';
@@ -136,26 +150,26 @@ async function runPerformanceTest() {
     });
     
     Object.entries(errorCounts).forEach(([error, count]) => {
-      console.log(`  ${error}: ${count} times`);
+      logger.info(`  ${error}: ${count} times`);
     });
   }
   
-  console.log('\n' + '='.repeat(60));
+  logger.info('\n' + '='.repeat(60));
 }
 
 // Handle process termination gracefully
 process.on('SIGINT', () => {
-  console.log('\nTest interrupted by user');
+  logger.info('\nTest interrupted by user');
   process.exit(0);
 });
 
 process.on('SIGTERM', () => {
-  console.log('\nTest terminated');
+  logger.info('\nTest terminated');
   process.exit(0);
 });
 
 // Run the test
 runPerformanceTest().catch(error => {
-  console.error('Test failed:', error);
+  logger.error('Test failed:', error);
   process.exit(1);
 });

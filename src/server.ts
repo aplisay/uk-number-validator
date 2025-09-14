@@ -3,6 +3,7 @@ import cors from 'cors';
 import { buildIndex, classifyUkNumber, normaliseToUkNational, NumberClass, PrefixRule, ClassificationResult } from './classifyUkNumber';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import logger from './logger';
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -19,7 +20,7 @@ let isReady = false;
 // Load and initialize the validator
 async function initializeValidator() {
   try {
-    console.log('Loading UK number validation data...');
+    logger.info('Loading UK number validation data...');
     const rulesPath = path.resolve(process.cwd(), 'prefixes.json');
     
     if (!fs.existsSync(rulesPath)) {
@@ -27,18 +28,18 @@ async function initializeValidator() {
     }
     
     rules = JSON.parse(fs.readFileSync(rulesPath, 'utf8'));
-    console.log(`Loaded ${rules.length} validation rules`);
+    logger.info({ rulesCount: rules.length }, `Loaded ${rules.length} validation rules`);
     
-    console.log('Building validation index...');
+    logger.info('Building validation index...');
     const startTime = Date.now();
     index = buildIndex(rules);
     const buildTime = Date.now() - startTime;
-    console.log(`Index built in ${buildTime}ms`);
+    logger.info({ buildTime }, `Index built in ${buildTime}ms`);
     
     isReady = true;
-    console.log('UK Number Validator service is ready!');
+    logger.info('UK Number Validator service is ready!');
   } catch (error) {
-    console.error('Failed to initialize validator:', error);
+    logger.error({ error }, 'Failed to initialize validator');
     process.exit(1);
   }
 }
@@ -94,7 +95,7 @@ app.get('/validate', (req, res) => {
       message: getResultMessage(result)
     });
   } catch (error) {
-    console.error('Validation error:', error);
+    logger.error({ error, number }, 'Validation error');
     res.status(500).json({
       error: 'Validation failed',
       message: 'An error occurred during validation'
@@ -156,7 +157,7 @@ app.post('/validate/batch', (req, res) => {
       count: results.length
     });
   } catch (error) {
-    console.error('Batch validation error:', error);
+    logger.error({ error, numbersCount: numbers.length }, 'Batch validation error');
     res.status(500).json({
       error: 'Batch validation failed',
       message: 'An error occurred during batch validation'
@@ -201,7 +202,7 @@ function getResultMessage(result: ClassificationResult): string {
 
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error('Unhandled error:', err);
+  logger.error({ error: err, url: req.url, method: req.method }, 'Unhandled error');
   res.status(500).json({
     error: 'Internal server error',
     message: 'An unexpected error occurred'
@@ -221,22 +222,22 @@ async function startServer() {
   await initializeValidator();
   
   app.listen(PORT, () => {
-    console.log(`UK Number Validator service running on port ${PORT}`);
-    console.log(`Health check: http://localhost:${PORT}/health`);
-    console.log(`Validate number: http://localhost:${PORT}/validate?number=02079460000`);
-    console.log(`Service info: http://localhost:${PORT}/info`);
+    logger.info({ port: PORT }, `UK Number Validator service running on port ${PORT}`);
+    logger.info({ healthUrl: `http://localhost:${PORT}/health` }, `Health check: http://localhost:${PORT}/health`);
+    logger.info({ validateUrl: `http://localhost:${PORT}/validate?number=02079460000` }, `Validate number: http://localhost:${PORT}/validate?number=02079460000`);
+    logger.info({ infoUrl: `http://localhost:${PORT}/info` }, `Service info: http://localhost:${PORT}/info`);
   });
 }
 
 // Handle graceful shutdown
 process.on('SIGTERM', () => {
-  console.log('Received SIGTERM, shutting down gracefully...');
+  logger.info('Received SIGTERM, shutting down gracefully...');
   process.exit(0);
 });
 
 process.on('SIGINT', () => {
-  console.log('Received SIGINT, shutting down gracefully...');
+  logger.info('Received SIGINT, shutting down gracefully...');
   process.exit(0);
 });
 
-startServer().catch(console.error);
+startServer().catch((error) => logger.error({ error }, 'Failed to start server'));
