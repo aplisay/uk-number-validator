@@ -186,7 +186,11 @@ async function pullOne(name: string, noFetch: boolean = false): Promise<CsvRow[]
           "";
 
         const rule = rangeToRule(range, status, provider);
-        if (rule) rules.push(rule);
+        if (rule) {
+          // Only include diallable statuses to minimize prefixes.json
+          const isDiallable = /^(Allocated|Allocated\(Closed Range\))$/i.test(rule.status.trim());
+          if (isDiallable) rules.push(rule);
+        }
       }
     } catch (error) {
       logger.warn({ fileName: f, error }, `Skipping ${f}: ${error}`);

@@ -90,7 +90,7 @@ The validator can be run as an HTTP service with the following endpoints:
 
 ### Endpoints
 
-- **GET /validate?number=\<number>** - Validate a single number
+- **GET /validate?number=<number>** - Validate a single number
 - **POST /validate/batch** - Validate multiple numbers (max 100)
 - **GET /health** - Service health check
 - **GET /info** - Service information
@@ -146,14 +146,15 @@ docker run -p 8080:8080 uk-number-validator
 CSV files are automatically cached in the `data/` directory to speed up development and testing:
 - Use `yarn download:cache` or `yarn build:all:cache` to use cached files only
 - Use `--no-fetch` flag with the download script to suppress network requests
+- Use `yarn clean` to remove `dist/`, `build/`, `prefixes.json`, and the CSV cache (`data/`)
 
 ## Notes
 
-- *Allocated* and *Allocated(Closed Range)* ranges are treated as **structurally diallable**.  
-  Statuses like *Free for allocation*, *Unavailable*, or *Withdrawn* are treated as invalid.
+- Only *Allocated* and *Allocated(Closed Range)* ranges are treated as **structurally diallable**.  
+  Statuses like *Protected*, *Reserved*, *Designated*, *Quarantined*, *Free for allocation*, *Unavailable*, or *Withdrawn* are treated as invalid.
+- `prefixes.json` is built to include only diallable statuses (Allocated, Allocated(Closed Range)) to keep it compact and fast.
 - Only standard full-length UK numbers are supported (no short codes).
 - Re-run `yarn build:all` weekly to pick up Ofcom updates.
-- **Note**: Existing `prefixes.json` files may contain S10 shortcodes from previous builds. Run `yarn build:all` to rebuild with only standard numbers (S1-S9).
 
 ## Performance Testing
 
@@ -177,7 +178,7 @@ The validator includes comprehensive performance tests that serve dual purposes:
 - Includes network error handling and timeout management
 - Generates detailed test data in `remote-test-data.json`
 - Command line options:
-  - `--url=http://example.com:8080` - specify server URL
+  - `--url=https://host:port` - specify server URL
   - `--batch` - use batch endpoint for better performance
   - `--count=1000` - limit number of tests
   - `--timeout=5000` - request timeout in milliseconds
@@ -203,8 +204,8 @@ yarn test:remote --count=100
 ```
 
 ### Test Categories
-- **Valid numbers**: Allocated, Protected, Allocated(Closed Range), Quarantined, Designated, Reserved
-- **Invalid numbers**: Free status, unavailable, withdrawn, malformed
+- **Valid numbers**: Allocated, Allocated(Closed Range)
+- **Invalid numbers**: Protected, Reserved, Designated, Quarantined, Free status, Unavailable, Withdrawn, malformed
 - **Edge cases**: Too short, international formats, various number formats
 
 The tests validate both correctness and performance, ensuring the validator can handle high-volume validation scenarios efficiently.

@@ -1,5 +1,5 @@
 # Use Node.js 18 LTS as base image
-FROM node:18-alpine
+FROM node:22-alpine
 
 # Set working directory
 WORKDIR /app
@@ -19,11 +19,14 @@ RUN yarn install --frozen-lockfile
 COPY src/ ./src/
 COPY tsconfig.json ./
 
-# Copy any existing data files (optional, for faster startup)
-COPY prefixes.json ./
+# Copy any existing data files (optional, for faster build, wont exist in a clean checkout)
+COPY prefixes.json* ./
+COPY data/* ./data/
 
 # Build the application
-RUN yarn build
+RUN yarn build:all:usingcache
+
+RUN yarn clean
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs && \

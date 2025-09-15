@@ -287,15 +287,15 @@ function generateTestNumbers(rules: PrefixRule[]): TestCase[] {
   
   // Get samples of different statuses
   const allocatedRules = rulesByStatus.get("Allocated") || [];
+  const closedRules = rulesByStatus.get("Allocated(Closed Range)") || [];
   const freeRules = rulesByStatus.get("Free") || [];
   const protectedRules = rulesByStatus.get("Protected") || [];
-  const closedRules = rulesByStatus.get("Allocated(Closed Range)") || [];
   const quarantinedRules = rulesByStatus.get("Quarantined") || [];
   const designatedRules = rulesByStatus.get("Designated") || [];
   const reservedRules = rulesByStatus.get("Reserved") || [];
   
-  // Generate 9,000 valid numbers (90%) - use actual valid rules
-  const validRules = [...allocatedRules, ...protectedRules, ...closedRules, ...quarantinedRules, ...designatedRules, ...reservedRules];
+  // Generate 9,000 valid numbers (90%) - only from Allocated and Allocated(Closed Range)
+  const validRules = [...allocatedRules, ...closedRules];
   for (let i = 0; i < 9000; i++) {
     const rule = validRules[Math.floor(Math.random() * validRules.length)];
     const number = generateValidNumberFromRule(rule);
@@ -326,47 +326,44 @@ function generateTestNumbers(rules: PrefixRule[]): TestCase[] {
     invalidCases.push({
       number: invalidNumber,
       expectedClass: NumberClass.NUMBER_INVALID,
-      description: `Invalid format number`
+      description: `Invalid non-UK format`
     });
   }
   
-  // 200 numbers that don't match any rules (guaranteed invalid)
+  // 200 numbers that don't match any prefix
   for (let i = 0; i < 200; i++) {
-    const number = generateNonMatchingNumber();
+    const nonMatching = generateNonMatchingNumber(validRules);
     invalidCases.push({
-      number,
+      number: nonMatching,
       expectedClass: NumberClass.NUMBER_INVALID,
       description: `Non-matching number`
     });
   }
   
-  // 200 edge cases (various formats)
-  for (let i = 0; i < 200; i++) {
-    const number = generateEdgeCaseNumber();
+  // 400 edge cases (still expected invalid)
+  for (let i = 0; i < 400; i++) {
+    const edge = generateEdgeCaseNumber();
     invalidCases.push({
-      number,
+      number: edge,
       expectedClass: NumberClass.NUMBER_INVALID,
-      description: `Edge case number`
+      description: `Edge case invalid`
     });
   }
   
-  // 200 Free status numbers (should be invalid)
-  for (let i = 0; i < 200; i++) {
-    const rule = freeRules[Math.floor(Math.random() * freeRules.length)];
-    const number = generateValidNumberFromRule(rule);
-    invalidCases.push({
-      number,
-      expectedClass: NumberClass.NUMBER_INVALID,
-      description: `Free status number (should be invalid)`
-    });
+  // Mix the valid and invalid cases
+  const interleaved: TestCase[] = [];
+  let v = 0, iv = 0;
+  for (let i = 0; i < 10000; i++) {
+    if (i % 10 === 0 && iv < invalidCases.length) {
+      interleaved.push(invalidCases[iv++]);
+    } else if (v < 9000) {
+      interleaved.push(testCases[v++]);
+    } else if (iv < invalidCases.length) {
+      interleaved.push(invalidCases[iv++]);
+    }
   }
   
-  // Shuffle the invalid cases and add them to test cases
-  const shuffledInvalid = invalidCases.sort(() => Math.random() - 0.5);
-  testCases.push(...shuffledInvalid);
-  
-  // Shuffle all test cases to intersperse valid and invalid
-  return testCases.sort(() => Math.random() - 0.5);
+  return interleaved;
 }
 
 function generateValidNumberFromRule(rule: PrefixRule): string {
@@ -418,7 +415,7 @@ function generateInvalidNumber(): string {
   return invalidFormats[Math.floor(Math.random() * invalidFormats.length)];
 }
 
-function generateNonMatchingNumber(): string {
+function generateNonMatchingNumber(validRules: PrefixRule[]): string {
   // Generate numbers that definitely won't match any UK rules
   const nonMatchingPrefixes = [
     "999", "888", "777", "666", "555", "444", "333", "222", "111", "000",

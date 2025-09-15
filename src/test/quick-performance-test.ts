@@ -48,8 +48,8 @@ function generateTestNumbers(rules: PrefixRule[]): TestCase[] {
     closed: closedRules.length
   }, "Available rules by status");
   
-  // Generate 90 valid numbers (90%)
-  const validRules = [...allocatedRules, ...protectedRules, ...closedRules];
+  // Generate 90 valid numbers (90%) - only from Allocated and Allocated(Closed Range)
+  const validRules = [...allocatedRules, ...closedRules];
   for (let i = 0; i < 90; i++) {
     const rule = validRules[Math.floor(Math.random() * validRules.length)];
     const number = generateNumberFromRule(rule);
@@ -61,14 +61,13 @@ function generateTestNumbers(rules: PrefixRule[]): TestCase[] {
   }
   
   // Generate 10 invalid numbers (10%)
-  // 5 Free status numbers (should be invalid)
+  // 5 clearly invalid numbers (no reliance on Free rules)
   for (let i = 0; i < 5; i++) {
-    const rule = freeRules[Math.floor(Math.random() * freeRules.length)];
-    const number = generateNumberFromRule(rule);
+    const number = generateInvalidNumber();
     testCases.push({
       number,
       expectedClass: NumberClass.NUMBER_INVALID,
-      description: `Free status number (should be invalid)`
+      description: `Clearly invalid number`
     });
   }
   
@@ -109,6 +108,17 @@ function generateShortNumberFromRule(rule: PrefixRule): string {
   }
   
   return number;
+}
+
+function generateInvalidNumber(): string {
+  const samples = [
+    "123456789",            // Missing leading 0
+    "+1234567890",          // Non-UK international
+    "999999999",            // Invalid prefix
+    "abc123",               // Non-digits
+    ""                      // Empty
+  ];
+  return samples[Math.floor(Math.random() * samples.length)];
 }
 
 function runPerformanceTest(testCases: TestCase[], idx: any): void {

@@ -34,13 +34,15 @@ function assertEq(name: string, result: ClassificationResult, expectedClass: Num
     classify("020 8099 6910", rules),
     NumberClass.NUMBER_VALID
   );
-  assertEq("+44 20 7946 0000", classify("+44 20 7946 0000", rules), NumberClass.NUMBER_VALID);
+  assertEq("+44 20 8099 6910", classify("+44 20 8099 6910", rules), NumberClass.NUMBER_VALID);
   assertEq("0151", classify("0151", rules), NumberClass.NUMBER_TOO_SHORT);
   assertEq("07418534", classify("07418534", rules), NumberClass.NUMBER_TOO_SHORT);
   assertEq("000", classify("000", rules), NumberClass.NUMBER_INVALID);
-  assertEq("0191 498 0123", classify("0191 498 0123", rules),  NumberClass.NUMBER_VALID );
-  // Test a standard UK number format
-  assertEq("020 7946 0000", classify("020 7946 0000", rules), NumberClass.NUMBER_VALID);
+  assertEq("02080996910", classify("02080996910", rules),  NumberClass.NUMBER_VALID );
+  // Protected range example should be invalid
+  assertEq("0191 498 0123", classify("0191 498 0123", rules),  NumberClass.NUMBER_INVALID );
+  // Test standard UK number formats via international prefixes
+  assertEq("0044 20 8099 6910", classify("0044 20 8099 6910", rules), NumberClass.NUMBER_VALID);
   logger.info('All basic tests executed.');
   logger.info('For comprehensive performance testing with 10,000 numbers, run: yarn test:performance');
 })();

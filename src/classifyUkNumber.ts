@@ -74,7 +74,7 @@ export function classifyUkNumber(national: string, idx: PrefixIndex): Classifica
   const len = national.length;
 
   if (matchedRules.length) {
-    const live = matchedRules.filter(r => !/unavailable|withdrawn|^free$/i.test(r.status));
+    const live = matchedRules.filter(r => /^(Allocated|Allocated\(Closed Range\))$/i.test(r.status));
 
     // Check for exact matches first (where prefix equals the full number)
     const exactMatch = live.find(r => r.prefix === national);
