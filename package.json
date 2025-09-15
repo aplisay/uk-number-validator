@@ -18,6 +18,7 @@
     "test": "node dist/test/run-tests.js",
     "test:performance": "tsc src/test/performance-test.ts --outDir dist --skipLibCheck && node dist/test/performance-test.js",
     "test:quick": "tsc src/test/quick-performance-test.ts --outDir dist --skipLibCheck && node dist/test/quick-performance-test.js",
+    "test:remote": "tsc src/test/remote-performance-test.ts --outDir dist --skipLibCheck && node dist/test/remote-performance-test.js",
     "bundle": "tar -czf build/uk-number-validator.tar.gz --exclude='./node_modules' --exclude='./build' --exclude='./.git' ."
   },
   "dependencies": {

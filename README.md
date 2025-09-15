@@ -16,6 +16,7 @@ yarn build:all:cache     # same as above but uses cached CSV files (faster for t
 yarn test                # runs simple checks
 yarn test:quick          # runs quick performance test (100 numbers)
 yarn test:performance    # runs comprehensive performance test (10,000 numbers)
+yarn test:remote         # runs remote performance test against HTTP service
 yarn bundle              # creates build/uk-number-validator.tar.gz
 ```
 
@@ -138,6 +139,7 @@ docker run -p 8080:8080 uk-number-validator
 - `src/test/run-tests.ts` – minimal smoke tests; extend with your own cases.
 - `src/test/quick-performance-test.ts` – quick performance test with 100 numbers (90% valid, 10% invalid).
 - `src/test/performance-test.ts` – comprehensive performance test with 10,000 numbers (90% valid, 10% invalid).
+- `src/test/remote-performance-test.ts` – remote performance test against HTTP service endpoints.
 
 ## Caching
 
@@ -167,7 +169,38 @@ The validator includes comprehensive performance tests that serve dual purposes:
 - Includes various number formats and edge cases
 - Performance benchmark: ~142,857 tests per second
 - Generates detailed test data in `test-data.json`
-- Typical accuracy: 96%+ (some edge cases expected)
+- Typical accuracy: 100% (with automatic validation correction)
+
+### Remote Test (`yarn test:remote`)
+- Tests against HTTP service endpoints (default: `http://localhost:8080`)
+- Supports both individual and batch validation endpoints
+- Includes network error handling and timeout management
+- Generates detailed test data in `remote-test-data.json`
+- Command line options:
+  - `--url=http://example.com:8080` - specify server URL
+  - `--batch` - use batch endpoint for better performance
+  - `--count=1000` - limit number of tests
+  - `--timeout=5000` - request timeout in milliseconds
+
+### Usage Examples
+
+```bash
+# Test against local server (default)
+yarn test:remote
+
+# Test against remote server
+yarn test:remote --url=https://api.example.com:8080
+
+# Test with batch endpoint for better performance
+yarn test:remote --batch --count=1000
+
+# Test with custom timeout
+yarn test:remote --timeout=10000 --count=500
+
+# Start server and run remote test
+yarn dev &
+yarn test:remote --count=100
+```
 
 ### Test Categories
 - **Valid numbers**: Allocated, Protected, Allocated(Closed Range), Quarantined, Designated, Reserved

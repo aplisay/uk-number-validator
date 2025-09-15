@@ -20,7 +20,6 @@ COPY src/ ./src/
 COPY tsconfig.json ./
 
 # Copy any existing data files (optional, for faster startup)
-COPY data/ ./data/
 COPY prefixes.json ./
 
 # Build the application
